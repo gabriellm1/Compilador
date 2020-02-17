@@ -67,7 +67,7 @@ for i in range(len(conta)):
         else:
             result-=int(conta[begin:len(conta)])
 
-print(result)
+print('Resultado final: ',result)
     
  
 
