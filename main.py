@@ -8,8 +8,8 @@ last_valid_isnumeric = False
 for cha in conta:
     if last_char_isspace:
         if last_valid_isnumeric and cha.isnumeric():
-            print("ERRO: espaço entre números")
-            exit()
+            raise Exception("ERRO: espaço entre números")
+            
     if cha == " ":
         last_char_isspace = True
     else:
@@ -22,14 +22,14 @@ for cha in conta:
 conta = conta.replace(" ","")
 
 if not conta:
-    print("ERRO: String vazia")
-    exit()
+    raise Exception('ERRO: String vazia')
+    
 
 sep = list(conta)
 
 if not sep[0].isnumeric() or not sep[-1].isnumeric():
-    print("ERRO: Formatação inválida")
-    exit()
+    raise Exception('ERRO: Formatação inválida')
+    
 
 
 begin = 0
@@ -55,8 +55,7 @@ for i in range(len(conta)):
             result-=int(conta[begin:end])
             sig=conta[i]
         else:
-            print("ERRO: Sinal inválido")
-            exit()
+            raise Exception('ERRO: Sinal inválido')
 
         begin = i+1
         end+=1
