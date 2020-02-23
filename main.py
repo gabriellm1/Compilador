@@ -1,80 +1,95 @@
-#/usr/bin/python
 import sys
-conta = sys.argv[1]
-
-last_char_isspace = False
-last_valid_isnumeric = False
-# resolver espaço duplo
-for cha in conta:
-    if last_char_isspace:
-        if last_valid_isnumeric and cha.isnumeric():
-            raise Exception("ERRO: espaço entre números")
-            
-    if cha == " ":
-        last_char_isspace = True
-    else:
-        last_char_isspace = False
-        if cha.isnumeric():
-            last_valid_isnumeric = True
-        else:
-            last_valid_isnumeric = False
-
-conta = conta.replace(" ","")
-
-if not conta:
-    raise Exception('ERRO: String vazia')
-    
-
-sep = list(conta)
-
-if not sep[0].isnumeric() or not sep[-1].isnumeric():
-    raise Exception('ERRO: Formatação inválida')
-    
 
 
-begin = 0
-end = 0
-first = True
+class Token():
 
-for i in range(len(conta)):
-    
-    if conta[i].isnumeric():
-        end+=1
+    def __init__(self,tipo,value):
 
-    else:
-        if first == True:
-            result = int(conta[begin:end])
-            
-            first = False
-            sig = conta[i]
+        self.tipo = tipo
+        self.value = value
+
+
+class Tokenizer():
+
+    def __init__(self,origin):
+
+        self.origin = origin
+        self.position = 0
+        self.selectNext()
+
+    def selectNext(self):
         
-        elif sig == "+":
-            result+=int(conta[begin:end])
-            sig = conta[i]
-        elif sig == "-":
-            result-=int(conta[begin:end])
-            sig=conta[i]
+        buf = ""
+        final = len(self.origin)
+
+        if self.origin[self.position] == " ":
+            self.position+=1
+        elif self.origin[self.position] == "+":
+            self.actual = Token(type("+"), "+")
+            self.position += 1
+        elif self.origin[self.position] == "-":
+            self.actual = Token(type("-"), "-")
+            self.position += 1
+        elif self.origin[self.position].isnumeric():
+            while self.origin[self.position].isnumeric():
+                buf += self.origin[self.position]
+                self.position+=1
+                    
+            self.actual = Token(type(1),int(buf))
         else:
-            raise Exception('ERRO: Sinal inválido')
+            raise Exception("Caracter inválido")
 
-        begin = i+1
-        end+=1
-
-    if i == (len(conta)-1):
-        if sig == "+":
-            result+=int(conta[begin:len(conta)])
-        else:
-            result-=int(conta[begin:len(conta)])
-
-print('Resultado final: ',result)
-    
- 
 
 
 
         
 
+
+class Parser():
+
+    @staticmethod
+    def parseExpression():
+        if Parser.tokens.actual.tipo is int:
+            resultado = Parser.tokens.actual.value
+            Parser.tokens.selectNext()
+            while (Parser.tokens.actual.value == "+") or (Parser.tokens.actual.value == "-"):
+                if Parser.tokens.actual.value == "EOF":
+                    break
+                elif Parser.tokens.actual.value == "+":
+                    print(resultado)
+                    print(Parser.tokens.actual.value)
+                    Parser.tokens.selectNext()
+                    print(Parser.tokens.actual.value)
+                    if Parser.tokens.actual.tipo is int:
+                        resultado += Parser.tokens.actual.value
+                    else:
+                        raise Exception("Erro + com simbolo")
+                elif Parser.tokens.actual.value == "-":
+                    Parser.tokens.selectNext()
+                    if Parser.tokens.actual.tipo is int:
+                        resultado -= Parser.tokens.actual.value
+                    else:
+                        raise Exception("Erro - com simbolo")
+                Parser.tokens.selectNext()
+            return resultado     
+        else:
+            raise Exception("Erro loop principal")
+
+    @staticmethod
+    def run(code):
+        Parser.tokens  = Tokenizer(code)
+        resultado = Parser.parseExpression()
+        return resultado
+
     
 
+if __name__ == "__main__":
 
+    
+    conta = sys.argv[1]
+    resultado = Parser.run(conta)
+    print(resultado)
 
+        
+
+    
