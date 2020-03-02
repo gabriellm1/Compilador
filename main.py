@@ -24,14 +24,14 @@ class Tokenizer():
         final = len(self.origin)
 
         if final == self.position:
-            self.actual = Token(type("a"),"EOF")
+            self.actual = Token(type("EOF"),"EOF")
         elif self.origin[self.position] == " ":
             while self.origin[self.position] == " ":
                 self.position+=1
                 if final == self.position:
                     break
         if final == self.position:
-            self.actual = Token(type("a"),"EOF")
+            self.actual = Token(type("EOF"),"EOF")
         elif self.origin[self.position] == "+":
             self.actual = Token(type("+"), "+")
             self.position += 1
@@ -71,20 +71,20 @@ class Parser():
                     if Parser.tokens.actual.tipo is int:
                         resultado += Parser.tokens.actual.value
                     else:
-                        raise Exception("Erro + com simbolo")
+                        raise Exception("Erro de formatação")
                 elif Parser.tokens.actual.value == "-":
                     Parser.tokens.selectNext()
                     if Parser.tokens.actual.tipo is int:
                         resultado -= Parser.tokens.actual.value
                     else:
-                        raise Exception("Erro - com simbolo")
+                        raise Exception("Erro de formatação")
                 Parser.tokens.selectNext()
             return resultado     
         else:
             if Parser.tokens.actual.value == " ":
                 Parser.tokens.selectNext()
             else:
-                raise Exception("Erro loop principal")
+                raise Exception("Erro de formatação")
 
     @staticmethod
     def run(code):
