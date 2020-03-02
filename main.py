@@ -15,6 +15,7 @@ class Tokenizer():
 
         self.origin = origin
         self.position = 0
+        self.actual = Token(type(1),0)
         self.selectNext()
 
     def selectNext(self):
@@ -22,8 +23,15 @@ class Tokenizer():
         buf = ""
         final = len(self.origin)
 
-        if self.origin[self.position] == " ":
-            self.position+=1
+        if final == self.position:
+            self.actual = Token(type("a"),"EOF")
+        elif self.origin[self.position] == " ":
+            while self.origin[self.position] == " ":
+                self.position+=1
+                if final == self.position:
+                    break
+        if final == self.position:
+            self.actual = Token(type("a"),"EOF")
         elif self.origin[self.position] == "+":
             self.actual = Token(type("+"), "+")
             self.position += 1
@@ -34,10 +42,13 @@ class Tokenizer():
             while self.origin[self.position].isnumeric():
                 buf += self.origin[self.position]
                 self.position+=1
-                    
+                if final == self.position:
+                    break  
             self.actual = Token(type(1),int(buf))
+            
         else:
             raise Exception("Caracter inválido")
+
 
 
 
@@ -56,10 +67,7 @@ class Parser():
                 if Parser.tokens.actual.value == "EOF":
                     break
                 elif Parser.tokens.actual.value == "+":
-                    print(resultado)
-                    print(Parser.tokens.actual.value)
                     Parser.tokens.selectNext()
-                    print(Parser.tokens.actual.value)
                     if Parser.tokens.actual.tipo is int:
                         resultado += Parser.tokens.actual.value
                     else:
@@ -73,7 +81,10 @@ class Parser():
                 Parser.tokens.selectNext()
             return resultado     
         else:
-            raise Exception("Erro loop principal")
+            if Parser.tokens.actual.value == " ":
+                Parser.tokens.selectNext()
+            else:
+                raise Exception("Erro loop principal")
 
     @staticmethod
     def run(code):
