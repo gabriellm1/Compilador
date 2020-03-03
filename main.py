@@ -63,6 +63,8 @@ class Parser():
         if Parser.tokens.actual.tipo is int:
             resultado = Parser.tokens.actual.value
             Parser.tokens.selectNext()
+            if Parser.tokens.actual.tipo is int:
+                    raise Exception("Erro de formatação")
             while Parser.tokens.actual.tipo == "sig":
                 if Parser.tokens.actual.value == "EOF":
                     break
@@ -79,6 +81,8 @@ class Parser():
                     else:
                         raise Exception("Erro de formatação")
                 Parser.tokens.selectNext()
+                if Parser.tokens.actual.tipo is int:
+                    raise Exception("Erro de formatação")
             return resultado     
         else:
             if Parser.tokens.actual.value == " ":
