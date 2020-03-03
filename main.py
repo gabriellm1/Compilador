@@ -33,10 +33,10 @@ class Tokenizer():
         if final == self.position:
             self.actual = Token(type("EOF"),"EOF")
         elif self.origin[self.position] == "+":
-            self.actual = Token(type("+"), "+")
+            self.actual = Token("sig", "+")
             self.position += 1
         elif self.origin[self.position] == "-":
-            self.actual = Token(type("-"), "-")
+            self.actual = Token("sig", "-")
             self.position += 1
         elif self.origin[self.position].isnumeric():
             while self.origin[self.position].isnumeric():
@@ -63,7 +63,7 @@ class Parser():
         if Parser.tokens.actual.tipo is int:
             resultado = Parser.tokens.actual.value
             Parser.tokens.selectNext()
-            while (Parser.tokens.actual.value == "+") or (Parser.tokens.actual.value == "-"):
+            while Parser.tokens.actual.tipo == "sig":
                 if Parser.tokens.actual.value == "EOF":
                     break
                 elif Parser.tokens.actual.value == "+":
