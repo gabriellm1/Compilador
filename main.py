@@ -9,6 +9,31 @@ class Token():
         self.value = value
 
 
+class PrePro():
+
+    @staticmethod
+    def filter(precode):
+        list_comments = []
+        i=0
+        while i<len(precode)-1:
+            if precode[i]=="/" and precode[i+1]=="*":
+                for j in range(i,len(precode)-1):
+                    if precode[j]=="*" and precode[j+1]=="/":
+                        list_comments.append((i,j))
+                        i=(j+2)
+                        break
+                i+=1
+            else:
+                i+=1
+        length = 0
+        for cm in list_comments:
+            s = cm[0]-length
+            f = cm[1]-length
+            precode =  precode[:s] + precode[f+2:]
+            length+= (cm[1]-cm[0])+2
+        return precode
+
+
 class Tokenizer():
 
     def __init__(self,origin):
@@ -56,11 +81,6 @@ class Tokenizer():
             raise Exception("Caracter inválido")
 
 
-
-
-        
-
-
 class Parser():
 
     @staticmethod
@@ -101,13 +121,14 @@ class Parser():
 
     @staticmethod
     def run(code):
-        Parser.tokens  = Tokenizer(code)
+        Parser.prepro = PrePro()
+        pp_code = Parser.prepro.filter(code)
+        Parser.tokens  = Tokenizer(pp_code)
         resultado = Parser.parseExpression()
         if Parser.tokens.actual.value == "EOF":
             return resultado
         else:
             raise Exception("Erro de formatação")
-
     
 
 if __name__ == "__main__":
