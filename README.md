@@ -9,7 +9,7 @@
 ### EBNF
 
 
-EXPRESSION = TERM, {("+" | "-"), TERM} ;
-TERM = NUMBER, {("*" | "/"), NUMBER} ;
-NUMBER = DIGIT, {DIGIT} ; 
-DIGIT = 0 | 1 | ... | 9 ;
+`EXPRESSION = TERM, {("+" | "-"), TERM}; `
+`TERM = NUMBER, {("*" | "/"), NUMBER} ;`
+`NUMBER = DIGIT, {DIGIT} ; `
+`DIGIT = 0 | 1 | ... | 9 ;`
