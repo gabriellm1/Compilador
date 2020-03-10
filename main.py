@@ -9,6 +9,31 @@ class Token():
         self.value = value
 
 
+class PrePro():
+
+    @staticmethod
+    def filter(precode):
+        list_comments = []
+        i=0
+        while i<len(precode)-1:
+            if precode[i]=="/" and precode[i+1]=="*":
+                for j in range(i,len(precode)-1):
+                    if precode[j]=="*" and precode[j+1]=="/":
+                        list_comments.append((i,j))
+                        i=(j+2)
+                        break
+                i+=1
+            else:
+                i+=1
+        length = 0
+        for cm in list_comments:
+            s = cm[0]-length
+            f = cm[1]-length
+            precode =  precode[:s] + precode[f+2:]
+            length+= (cm[1]-cm[0])+2
+        return precode
+
+
 class Tokenizer():
 
     def __init__(self,origin):
@@ -33,10 +58,16 @@ class Tokenizer():
         if final == self.position:
             self.actual = Token(type("EOF"),"EOF")
         elif self.origin[self.position] == "+":
-            self.actual = Token("sig", "+")
+            self.actual = Token("+ou-", "+")
             self.position += 1
         elif self.origin[self.position] == "-":
-            self.actual = Token("sig", "-")
+            self.actual = Token("+ou-", "-")
+            self.position += 1
+        elif self.origin[self.position] == "*":
+            self.actual = Token("*ou/", "*")
+            self.position += 1
+        elif self.origin[self.position] == "/":
+            self.actual = Token("*ou/", "/")
             self.position += 1
         elif self.origin[self.position].isnumeric():
             while self.origin[self.position].isnumeric():
@@ -50,52 +81,54 @@ class Tokenizer():
             raise Exception("Caracter inválido")
 
 
-
-
-
-        
-
-
 class Parser():
 
     @staticmethod
-    def parseExpression():
+    def parseTerm():
         if Parser.tokens.actual.tipo is int:
             resultado = Parser.tokens.actual.value
             Parser.tokens.selectNext()
-            if Parser.tokens.actual.tipo is int:
-                    raise Exception("Erro de formatação")
-            while Parser.tokens.actual.tipo == "sig":
-                if Parser.tokens.actual.value == "EOF":
-                    break
-                elif Parser.tokens.actual.value == "+":
+            while Parser.tokens.actual.tipo == "*ou/":
+                if Parser.tokens.actual.value == "*":
                     Parser.tokens.selectNext()
                     if Parser.tokens.actual.tipo is int:
-                        resultado += Parser.tokens.actual.value
+                        resultado *= Parser.tokens.actual.value
                     else:
                         raise Exception("Erro de formatação")
-                elif Parser.tokens.actual.value == "-":
+                elif Parser.tokens.actual.value == "/":
                     Parser.tokens.selectNext()
                     if Parser.tokens.actual.tipo is int:
-                        resultado -= Parser.tokens.actual.value
+                        resultado //= Parser.tokens.actual.value
                     else:
                         raise Exception("Erro de formatação")
                 Parser.tokens.selectNext()
-                if Parser.tokens.actual.tipo is int:
-                    raise Exception("Erro de formatação")
             return resultado     
         else:
-            if Parser.tokens.actual.value == " ":
-                Parser.tokens.selectNext()
-            else:
                 raise Exception("Erro de formatação")
 
     @staticmethod
-    def run(code):
-        Parser.tokens  = Tokenizer(code)
-        resultado = Parser.parseExpression()
+    def parseExpression():
+        resultado = Parser.parseTerm()
+        while (Parser.tokens.actual.tipo == "+ou-"):
+            if Parser.tokens.actual.value == "+":
+                Parser.tokens.selectNext()
+                resultado += Parser.parseTerm()
+            elif Parser.tokens.actual.value == "-":
+                Parser.tokens.selectNext()
+                resultado -= Parser.parseTerm()
         return resultado
+            
 
+    @staticmethod
+    def run(code):
+        Parser.prepro = PrePro()
+        pp_code = Parser.prepro.filter(code)
+        Parser.tokens  = Tokenizer(pp_code)
+        resultado = Parser.parseExpression()
+        if Parser.tokens.actual.value == "EOF":
+            return resultado
+        else:
+            raise Exception("Erro de formatação")
     
 
 if __name__ == "__main__":
