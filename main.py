@@ -117,6 +117,10 @@ class Parser():
                 Parser.tokens.selectNext()
                 resultado -= Parser.parseTerm()
         return resultado
+
+    @staticmethod
+    def parseFactor():
+        pass
             
 
     @staticmethod
