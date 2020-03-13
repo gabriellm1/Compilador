@@ -44,10 +44,8 @@ class Tokenizer():
         self.selectNext()
 
     def selectNext(self):
-        
         buf = ""
         final = len(self.origin)
-
         if final == self.position:
             self.actual = Token(type("EOF"),"EOF")
         elif self.origin[self.position] == " ":
@@ -69,6 +67,12 @@ class Tokenizer():
         elif self.origin[self.position] == "/":
             self.actual = Token("*ou/", "/")
             self.position += 1
+        elif self.origin[self.position] == "(":
+            self.actual = Token("abre(", "(")
+            self.position += 1
+        elif self.origin[self.position] == ")":
+            self.actual = Token("fecha)", ")")
+            self.position += 1
         elif self.origin[self.position].isnumeric():
             while self.origin[self.position].isnumeric():
                 buf += self.origin[self.position]
@@ -83,28 +87,45 @@ class Tokenizer():
 
 class Parser():
 
+
     @staticmethod
-    def parseTerm():
+    def parseFactor():
         if Parser.tokens.actual.tipo is int:
             resultado = Parser.tokens.actual.value
             Parser.tokens.selectNext()
-            while Parser.tokens.actual.tipo == "*ou/":
-                if Parser.tokens.actual.value == "*":
-                    Parser.tokens.selectNext()
-                    if Parser.tokens.actual.tipo is int:
-                        resultado *= Parser.tokens.actual.value
-                    else:
-                        raise Exception("Erro de formatação")
-                elif Parser.tokens.actual.value == "/":
-                    Parser.tokens.selectNext()
-                    if Parser.tokens.actual.tipo is int:
-                        resultado //= Parser.tokens.actual.value
-                    else:
-                        raise Exception("Erro de formatação")
+            return resultado
+        elif (Parser.tokens.actual.tipo == "+ou-"):
+            if Parser.tokens.actual.value == "+":
                 Parser.tokens.selectNext()
-            return resultado     
+                resultado = +Parser.parseFactor()
+                return resultado
+            elif Parser.tokens.actual.value == "-":
+                Parser.tokens.selectNext()
+                resultado = -Parser.parseFactor()
+                return resultado
+        elif Parser.tokens.actual.tipo == "abre(":
+            Parser.tokens.selectNext()
+            resultado = Parser.parseExpression()
+            if Parser.tokens.actual.tipo != "fecha)":
+                raise Exception("Parênteses não fechado")
+            Parser.tokens.selectNext()
+            return resultado
         else:
-                raise Exception("Erro de formatação")
+            
+            raise Exception("Erro de formatação")
+
+
+    @staticmethod
+    def parseTerm():
+        resultado = Parser.parseFactor()
+        while (Parser.tokens.actual.tipo == "*ou/"):
+            if Parser.tokens.actual.value == "*":
+                Parser.tokens.selectNext()
+                resultado *= Parser.parseFactor()
+            elif Parser.tokens.actual.value == "/":
+                Parser.tokens.selectNext()
+                resultado /= Parser.parseFactor()
+        return resultado
 
     @staticmethod
     def parseExpression():
@@ -128,7 +149,7 @@ class Parser():
         if Parser.tokens.actual.value == "EOF":
             return resultado
         else:
-            raise Exception("Erro de formatação")
+            raise Exception("Erro de EOF")
     
 
 if __name__ == "__main__":

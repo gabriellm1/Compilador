@@ -12,7 +12,9 @@
 
 `EXPRESSION = TERM, {("+" | "-"), TERM}; `
 
-`TERM = NUMBER, {("*" | "/"), NUMBER} ;`
+`TERM = FACTOR, {("*" | "/"), FACTOR} ;`
+
+`FACTOR = NUMBER | ("+" | "-"), FACTOR | "(",EXPRESSION,")" ;`
 
 `NUMBER = DIGIT, {DIGIT} ; `
 
