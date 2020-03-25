@@ -1,5 +1,5 @@
+import os
 import sys
-
 
 class Token():
 
@@ -82,8 +82,58 @@ class Tokenizer():
             self.actual = Token(type(1),int(buf))
             
         else:
-            raise Exception("Caracter inválido")
+            raise "Caracter inválido"
 
+
+class Node():
+    def __init__(self,value,children):
+        self.value = value
+        self.children = children
+    def Evaluate(self):
+        pass
+
+class BinOp(Node):
+    def __init__(self,value,children):
+        self.value = value
+        self.children = children
+    
+    def Evaluate(self):
+        if self.value == "*":
+            return self.children[0].Evaluate() * self.children[1].Evaluate()
+
+        elif self.value == "/":
+            return self.children[0].Evaluate() // self.children[1].Evaluate()
+
+        elif self.value == "+":
+            return self.children[0].Evaluate() + self.children[1].Evaluate()
+
+        elif self.value == "-":
+            return self.children[0].Evaluate() - self.children[1].Evaluate()
+
+class UnOp(Node):
+    def __init__(self,value,children):
+        self.value = value
+        self.children = children
+
+    def Evaluate(self):
+        if self.value == "+":
+            return  + self.children[0].Evaluate()
+
+        elif self.value == "-":
+            return  - self.children[0].Evaluate()
+
+class IntVal(Node):
+    def __init__(self,value):
+        self.value = value
+    
+    def Evaluate(self):
+        return self.value
+
+class NoOp(Node):
+    def __init__(self):
+        pass
+    def Evaluate():
+        pass
 
 class Parser():
 
@@ -93,51 +143,51 @@ class Parser():
         if Parser.tokens.actual.tipo is int:
             resultado = Parser.tokens.actual.value
             Parser.tokens.selectNext()
-            return resultado
+            return IntVal(resultado)
         elif (Parser.tokens.actual.tipo == "+ou-"):
             if Parser.tokens.actual.value == "+":
                 Parser.tokens.selectNext()
-                resultado = +Parser.parseFactor()
-                return resultado
+                return UnOp("+",[Parser.parseFactor()])
             elif Parser.tokens.actual.value == "-":
                 Parser.tokens.selectNext()
-                resultado = -Parser.parseFactor()
-                return resultado
+                return UnOp("-",[Parser.parseFactor()])
         elif Parser.tokens.actual.tipo == "abre(":
             Parser.tokens.selectNext()
-            resultado = Parser.parseExpression()
+            node = Parser.parseExpression()
             if Parser.tokens.actual.tipo != "fecha)":
-                raise Exception("Parênteses não fechado")
+                raise "Parênteses não fechado"
             Parser.tokens.selectNext()
-            return resultado
+            return node
         else:
             
-            raise Exception("Erro de formatação")
+            raise "Erro de formatação"
 
 
     @staticmethod
     def parseTerm():
-        resultado = Parser.parseFactor()
+        node = Parser.parseFactor()
         while (Parser.tokens.actual.tipo == "*ou/"):
+            sinal = Parser.tokens.actual.value
             if Parser.tokens.actual.value == "*":
                 Parser.tokens.selectNext()
-                resultado *= Parser.parseFactor()
+                node = BinOp("*",[node, Parser.parseFactor()])
             elif Parser.tokens.actual.value == "/":
                 Parser.tokens.selectNext()
-                resultado //= Parser.parseFactor()
-        return resultado
+                node = BinOp("/",[node, Parser.parseFactor()])
+        return node
+
 
     @staticmethod
     def parseExpression():
-        resultado = Parser.parseTerm()
+        node = Parser.parseTerm()
         while (Parser.tokens.actual.tipo == "+ou-"):
             if Parser.tokens.actual.value == "+":
                 Parser.tokens.selectNext()
-                resultado += Parser.parseTerm()
+                node = BinOp("+",[node, Parser.parseTerm()])
             elif Parser.tokens.actual.value == "-":
                 Parser.tokens.selectNext()
-                resultado -= Parser.parseTerm()
-        return resultado
+                node = BinOp("-",[node, Parser.parseTerm()])
+        return node
             
 
     @staticmethod
@@ -145,19 +195,25 @@ class Parser():
         Parser.prepro = PrePro()
         pp_code = Parser.prepro.filter(code)
         Parser.tokens  = Tokenizer(pp_code)
-        resultado = Parser.parseExpression()
+        root = Parser.parseExpression()
         if Parser.tokens.actual.value == "EOF":
-            return resultado
+            return root
         else:
-            raise Exception("Erro de EOF")
+            raise "Erro de EOF"
     
 
 if __name__ == "__main__":
 
+
+    file = sys.argv[1]
+    if os.path.splitext(file)[1] != ".php":
+        raise "Arquivo não do tipo .php"
+    else:
+        with open(file, "r") as source:
+            conta = source.read()
     
-    conta = sys.argv[1]
-    resultado = Parser.run(conta)
-    print(resultado)
+    root = Parser.run(conta)
+    print(root.Evaluate())
 
         
 
