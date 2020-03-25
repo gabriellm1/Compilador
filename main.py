@@ -176,6 +176,7 @@ class Parser():
                 node = BinOp("/",[node, Parser.parseFactor()])
         return node
 
+
     @staticmethod
     def parseExpression():
         node = Parser.parseTerm()
