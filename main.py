@@ -167,7 +167,6 @@ class Parser():
     def parseTerm():
         node = Parser.parseFactor()
         while (Parser.tokens.actual.tipo == "*ou/"):
-            sinal = Parser.tokens.actual.value
             if Parser.tokens.actual.value == "*":
                 Parser.tokens.selectNext()
                 node = BinOp("*",[node, Parser.parseFactor()])
