@@ -33,13 +33,13 @@ class PrePro():
             length+= (cm[1]-cm[0])+2
         return precode
 
-
 class Tokenizer():
 
     def __init__(self,origin):
 
         self.origin = origin
         self.position = 0
+        self.reserveds = ["echo"]
         self.actual = Token(type(1),0)
         self.selectNext()
 
@@ -48,13 +48,27 @@ class Tokenizer():
         final = len(self.origin)
         if final == self.position:
             self.actual = Token(type("EOF"),"EOF")
-        elif self.origin[self.position] == " ":
-            while self.origin[self.position] == " ":
+        elif self.origin[self.position] == " " or self.origin[self.position] == "\n":
+            while self.origin[self.position] == " " or self.origin[self.position] == "\n":
                 self.position+=1
                 if final == self.position:
                     break
         if final == self.position:
-            self.actual = Token(type("EOF"),"EOF")
+            self.actual = Token(type("EOF"),"EOF")    
+        elif self.origin[self.position] == "$":
+            buf="$"
+            self.position+=1
+            if self.origin[self.position].isalpha():
+                buf+=self.origin[self.position]
+                self.position+=1
+            else:
+                raise "Variável mal formatada"
+            while self.origin[self.position].isalpha() or self.origin[self.position].isnumeric() or self.origin[self.position] == "_":
+                buf += self.origin[self.position]
+                self.position+=1
+                if final == self.position:
+                    break
+            self.actual = Token("var",buf)
         elif self.origin[self.position] == "+":
             self.actual = Token("+ou-", "+")
             self.position += 1
@@ -67,20 +81,43 @@ class Tokenizer():
         elif self.origin[self.position] == "/":
             self.actual = Token("*ou/", "/")
             self.position += 1
+        elif self.origin[self.position] == "=":
+            self.actual = Token("igual", "=")
+            self.position += 1
         elif self.origin[self.position] == "(":
             self.actual = Token("abre(", "(")
             self.position += 1
         elif self.origin[self.position] == ")":
             self.actual = Token("fecha)", ")")
             self.position += 1
+        elif self.origin[self.position] == "{":
+            self.actual = Token("abre{", "{")
+            self.position += 1
+        elif self.origin[self.position] == "}":
+            self.actual = Token("fecha}", "}")
+            self.position += 1
+        elif self.origin[self.position] == ";":
+            self.actual = Token("fim", ";")
+            self.position += 1
         elif self.origin[self.position].isnumeric():
             while self.origin[self.position].isnumeric():
                 buf += self.origin[self.position]
                 self.position+=1
                 if final == self.position:
-                    break  
+                    break
             self.actual = Token(type(1),int(buf))
-            
+        elif self.origin[self.position].isalpha():
+            while self.origin[self.position].isalpha():
+                buf += self.origin[self.position]
+                self.position+=1
+                if final == self.position:
+                    break
+            self.actual = Token("echo",buf)
+            if buf.lower() in self.reserveds:
+                self.actual = Token("echo",buf.lower())
+            else:
+                raise "Not reserved word or variable"
+    
         else:
             raise "Caracter inválido"
 
@@ -91,6 +128,35 @@ class Node():
         self.children = children
     def Evaluate(self):
         pass
+
+class Command(Node):
+    def __init__(self,children):
+        self.children = children
+    def Evaluate(self):
+        for node in self.children:
+            node.Evaluate()
+
+class Assingnment(Node):
+    def __init__(self,value,children,table):
+        self.value = value
+        self.children = children
+        self.table = table
+    def Evaluate(self):
+        self.table.Setter(self.value,self.children[0].Evaluate())
+        
+
+class Identifier(Node):
+    def __init__(self,value,table):
+        self.value = value
+        self.table = table
+    def Evaluate(self):
+        return self.table.Getter(self.value)
+
+class Echo(Node):
+    def __init__(self,children):
+        self.children = children
+    def Evaluate(self):
+        print(self.children[0].Evaluate())
 
 class BinOp(Node):
     def __init__(self,value,children):
@@ -135,8 +201,20 @@ class NoOp(Node):
     def Evaluate():
         pass
 
-class Parser():
+class SymbolTable:
+    def __init__(self):
+        self.table = {}
+    def Setter(self,simbol,value):
+        self.table[simbol] = value
+    def Getter(self,simbol):
+        if simbol not in self.table.keys():
+            raise "Variável não inicializada"
+        return self.table[simbol]
 
+
+
+
+class Parser():
 
     @staticmethod
     def parseFactor():
@@ -144,6 +222,10 @@ class Parser():
             resultado = Parser.tokens.actual.value
             Parser.tokens.selectNext()
             return IntVal(resultado)
+        elif Parser.tokens.actual.tipo == "var":
+            var_name = Parser.tokens.actual.value
+            Parser.tokens.selectNext()
+            return Identifier(var_name,Parser.Table)
         elif (Parser.tokens.actual.tipo == "+ou-"):
             if Parser.tokens.actual.value == "+":
                 Parser.tokens.selectNext()
@@ -159,7 +241,6 @@ class Parser():
             Parser.tokens.selectNext()
             return node
         else:
-            
             raise "Erro de formatação"
 
 
@@ -187,6 +268,49 @@ class Parser():
                 Parser.tokens.selectNext()
                 node = BinOp("-",[node, Parser.parseTerm()])
         return node
+
+    @staticmethod
+    def parseCommand():
+        if Parser.tokens.actual.tipo == "var":
+            var_name = Parser.tokens.actual.value
+            Parser.tokens.selectNext()
+            if Parser.tokens.actual.tipo == "igual":
+                Parser.tokens.selectNext()
+                node = Assingnment(var_name,[Parser.parseExpression()],Parser.Table)
+            else:
+                raise "Erro de formatação"
+            if Parser.tokens.actual.tipo == "fim":
+                Parser.tokens.selectNext()
+                return node
+            else:
+                raise "Falta ; no fim da linha"
+        elif Parser.tokens.actual.tipo == "echo":
+            Parser.tokens.selectNext()
+            node = Echo([Parser.parseExpression()])
+            if Parser.tokens.actual.tipo == "fim":
+                Parser.tokens.selectNext()
+                return node
+            else:
+                raise "Falta ; no fim da linha"
+        else:
+            return Parser.parseBlock()
+
+    @staticmethod
+    def parseBlock():
+        if Parser.tokens.actual.tipo == "abre{":
+            list_cmd = []
+            Parser.tokens.selectNext()
+            while Parser.tokens.actual.tipo != "fecha}":
+                list_cmd.append(Parser.parseCommand())
+            if Parser.tokens.actual.tipo == "fecha}":
+                Parser.tokens.selectNext()
+                return Command(list_cmd)
+            else:
+                raise "Chaves não fechadas (})"
+        else:
+            raise "Bloco não aberto com chaves({)"
+
+
             
 
     @staticmethod
@@ -194,9 +318,11 @@ class Parser():
         Parser.prepro = PrePro()
         pp_code = Parser.prepro.filter(code)
         Parser.tokens  = Tokenizer(pp_code)
-        root = Parser.parseExpression()
+        Parser.Table = SymbolTable()
+        root = Parser.parseBlock()
+        
         if Parser.tokens.actual.value == "EOF":
-            return root
+            return root.Evaluate()
         else:
             raise "Erro de EOF"
     
@@ -210,9 +336,7 @@ if __name__ == "__main__":
     else:
         with open(file, "r") as source:
             conta = source.read()
-    
-    root = Parser.run(conta)
-    print(root.Evaluate())
+    resultado = Parser.run(conta)
 
         
 
