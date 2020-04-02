@@ -6,7 +6,7 @@
 
 ### Diagrama sintático:
 
-![alt text](diagrama.jpeg)
+![alt text](ds_compilador.png)
 
 ### EBNF:
 
