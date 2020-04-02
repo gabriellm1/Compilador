@@ -2,10 +2,10 @@
 
  - Para rodar : ``` python main.py exemplo.php ```
  - Comentários: Abrir com `/*` , e fechar com `*/`
- - Para criar um bloco abrir chaves '{'
- - Inserir comandos como echo(para imprimir valor) ou assignment(atribuir valor a variável, exemplo: '$x = 10;')
- - Sempre terminar um comando com ';'
- - Fechar o bloco com chaves '}'
+ - Para criar um bloco abrir chaves `{`
+ - Inserir comandos como echo(para imprimir valor) ou assignment(atribuir valor a variável, exemplo: `$x = 10;`)
+ - Sempre terminar um comando com `;`
+ - Fechar o bloco com chaves `}`
  - Blocos podem ser criados dentro de outros blocos.
 
 ### Diagrama sintático:
