@@ -334,7 +334,7 @@ if __name__ == "__main__":
     else:
         with open(file, "r") as source:
             conta = source.read()
-    resultado = Parser.run(conta)
+    Parser.run(conta)
 
         
 
