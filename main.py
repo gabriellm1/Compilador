@@ -126,79 +126,77 @@ class Node():
     def __init__(self,value,children):
         self.value = value
         self.children = children
-    def Evaluate(self):
+    def Evaluate(self,table):
         pass
 
 class Command(Node):
     def __init__(self,children):
         self.children = children
-    def Evaluate(self):
+    def Evaluate(self,table):
         for node in self.children:
-            node.Evaluate()
+            node.Evaluate(table)
 
 class Assingnment(Node):
-    def __init__(self,value,children,table):
+    def __init__(self,value,children):
         self.value = value
         self.children = children
-        self.table = table
-    def Evaluate(self):
-        self.table.Setter(self.value,self.children[0].Evaluate())
+    def Evaluate(self,table):
+        table.Setter(self.value,self.children[0].Evaluate(table))
         
 
 class Identifier(Node):
-    def __init__(self,value,table):
+    def __init__(self,value):
         self.value = value
-        self.table = table
-    def Evaluate(self):
-        return self.table.Getter(self.value)
+    def Evaluate(self,table):
+        return table.Getter(self.value)
 
 class Echo(Node):
     def __init__(self,children):
         self.children = children
-    def Evaluate(self):
-        print(self.children[0].Evaluate())
+    def Evaluate(self,table):
+        print(self.children[0].Evaluate(table))
 
 class BinOp(Node):
     def __init__(self,value,children):
         self.value = value
         self.children = children
     
-    def Evaluate(self):
+    def Evaluate(self,table):
         if self.value == "*":
-            return self.children[0].Evaluate() * self.children[1].Evaluate()
+            return self.children[0].Evaluate(table) * self.children[1].Evaluate(table)
 
         elif self.value == "/":
-            return self.children[0].Evaluate() // self.children[1].Evaluate()
+            return self.children[0].Evaluate(table) // self.children[1].Evaluate(table)
 
         elif self.value == "+":
-            return self.children[0].Evaluate() + self.children[1].Evaluate()
+            return self.children[0].Evaluate(table) + self.children[1].Evaluate(table)
 
         elif self.value == "-":
-            return self.children[0].Evaluate() - self.children[1].Evaluate()
+            return self.children[0].Evaluate(table) - self.children[1].Evaluate(table)
 
 class UnOp(Node):
     def __init__(self,value,children):
         self.value = value
         self.children = children
 
-    def Evaluate(self):
+    def Evaluate(self,table):
         if self.value == "+":
-            return  + self.children[0].Evaluate()
+            return  + self.children[0].Evaluate(table)
 
         elif self.value == "-":
-            return  - self.children[0].Evaluate()
+            return  - self.children[0].Evaluate(table)
 
 class IntVal(Node):
     def __init__(self,value):
         self.value = value
     
-    def Evaluate(self):
+    def Evaluate(self,table):
         return self.value
 
 class NoOp(Node):
     def __init__(self):
         pass
-    def Evaluate():
+    def Evaluate(table):
         pass
 
 class SymbolTable:
@@ -225,7 +223,7 @@ class Parser():
         elif Parser.tokens.actual.tipo == "var":
             var_name = Parser.tokens.actual.value
             Parser.tokens.selectNext()
-            return Identifier(var_name,Parser.Table)
+            return Identifier(var_name)
         elif (Parser.tokens.actual.tipo == "+ou-"):
             if Parser.tokens.actual.value == "+":
                 Parser.tokens.selectNext()
@@ -276,7 +274,7 @@ class Parser():
             Parser.tokens.selectNext()
             if Parser.tokens.actual.tipo == "igual":
                 Parser.tokens.selectNext()
-                node = Assingnment(var_name,[Parser.parseExpression()],Parser.Table)
+                node = Assingnment(var_name,[Parser.parseExpression()])
             else:
                 raise "Erro de formatação"
             if Parser.tokens.actual.tipo == "fim":
@@ -318,11 +316,11 @@ class Parser():
         Parser.prepro = PrePro()
         pp_code = Parser.prepro.filter(code)
         Parser.tokens  = Tokenizer(pp_code)
-        Parser.Table = SymbolTable()
         root = Parser.parseBlock()
+        Parser.Table = SymbolTable()
         
         if Parser.tokens.actual.value == "EOF":
-            return root.Evaluate()
+            return root.Evaluate(Parser.Table)
         else:
             raise "Erro de EOF"
     
