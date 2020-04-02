@@ -10,12 +10,21 @@
 
 ### EBNF:
 
+`BLOCK = "{", { COMMAND }, "}" ;`
+
+`COMMAND = ( λ | ASSIGNMENT | PRINT), ";" | BLOCK ;`
+
+`ASSIGNMENT = IDENTIFIER, "=", EXPRESSION, ";" ;`
+
+`PRINT = "echo", EXPRESSION, ";" ;`
 
 `EXPRESSION = TERM, {("+" | "-"), TERM}; `
 
 `TERM = FACTOR, {("*" | "/"), FACTOR} ;`
 
-`FACTOR = NUMBER | ("+" | "-"), FACTOR | "(",EXPRESSION,")" ;`
+`FACTOR = NUMBER | ("+" | "-"), FACTOR | "(",EXPRESSION,")" | IDENTIFIER ; IDENTIFIER = "$", LETTER, { LETTER | DIGIT | "_" };`
+
+`LETTER = ( a | ... | z | A | ... | Z ) ;`
 
 `NUMBER = DIGIT, {DIGIT} ; `
 
