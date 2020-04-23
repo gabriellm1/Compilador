@@ -18,15 +18,21 @@
 
 `COMMAND = ( λ | ASSIGNMENT | PRINT), ";" | BLOCK ;`
 
-`ASSIGNMENT = IDENTIFIER, "=", EXPRESSION, ";" ;`
+`WHILE = "while" , "(" , RELEXPR , ")" , COMMAND ;`
 
-`PRINT = "echo", EXPRESSION, ";" ;`
+`IF = "if" , "(" , RELEXPR , ")" , {"else" , COMMAND} ;`
 
-`EXPRESSION = TERM, {("+" | "-"), TERM}; `
+`ASSIGNMENT = IDENTIFIER, "=", RELEXPR, ";" ;`
 
-`TERM = FACTOR, {("*" | "/"), FACTOR} ;`
+`PRINT = "echo", RELEXPR, ";" ;`
 
-`FACTOR = NUMBER | ("+" | "-"), FACTOR | "(",EXPRESSION,")" | IDENTIFIER ; IDENTIFIER = "$", LETTER, { LETTER | DIGIT | "_" };`
+`RELEXPR = EXPRESSION, {("==" | ">" | "<"), EXPRESSION}; `
+
+`EXPRESSION = TERM, {("+" | "-" | "or"), TERM}; `
+
+`TERM = FACTOR, {("*" | "/" | "and"), FACTOR} ;`
+
+`FACTOR = NUMBER | ("+" | "-" | "!"), FACTOR | "(",RELEXPR,")" | readline , "(" , ")" |IDENTIFIER ; IDENTIFIER = "$", LETTER, { LETTER | DIGIT | "_" };`
 
 `LETTER = ( a | ... | z | A | ... | Z ) ;`
 
