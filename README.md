@@ -32,7 +32,9 @@
 
 `TERM = FACTOR, {("*" | "/" | "and"), FACTOR} ;`
 
-`FACTOR = NUMBER | ("+" | "-" | "!"), FACTOR | "(",RELEXPR,")" | readline , "(" , ")" |IDENTIFIER ; IDENTIFIER = "$", LETTER, { LETTER | DIGIT | "_" };`
+`FACTOR = NUMBER | ("+" | "-" | "!"), FACTOR | "(",RELEXPR,")" | readline , "(" , ")" | IDENTIFIER ;`
+
+`IDENTIFIER = "$", LETTER, { LETTER | DIGIT | "_" };`
 
 `LETTER = ( a | ... | z | A | ... | Z ) ;`
 
