@@ -13,8 +13,26 @@ $y = 4;
         }   
         $i = $i + 1;
     }
+
+  $g = 0;
+  $t = 1;
+  $counter = 0;
+  while (!$g and $t) {
+      if ($g or $t)
+        $counter = $counter + 1;
+        
+      if ($counter == 5){
+        $g = 1; 
+        $t = 0;  
+      } 
+  }
+echo $counter;
+echo $g;
+echo $t;
+  if ($g and !$t){
     echo $x;
     echo $y;
     echo $i;
-    echo readline();
+  }
+  echo readline();
 }

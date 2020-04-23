@@ -236,7 +236,7 @@ class UnOp(Node):
         elif self.value == "-":
             return  - self.children[0].Evaluate(table)
         elif self.value == "!":
-            return  - self.children[0].Evaluate(table)
+            return  not self.children[0].Evaluate(table)
 
 class IntVal(Node):
     def __init__(self,value):
@@ -300,6 +300,10 @@ class Parser():
                 if Parser.tokens.actual.tipo == "fecha)":
                     Parser.tokens.selectNext()
                     return Readline()
+                else:
+                    raise "Parênteses não fechado"
+            else:
+                 raise "Parênteses não aberto"     
         else:
             raise "Erro de formatação"
 
@@ -383,6 +387,10 @@ class Parser():
                             return IF([cond,ifnode,Parser.parseCommand()])
                         else:
                             return IF([cond,ifnode])
+                    else:
+                        raise "Parênteses não fechado"
+                else:
+                    raise "Parênteses não aberto"
 
 
             elif Parser.tokens.actual.value == "while":
@@ -393,6 +401,10 @@ class Parser():
                     if Parser.tokens.actual.tipo == "fecha)":
                         Parser.tokens.selectNext()
                         return WHILE([cond,Parser.parseCommand()])
+                    else:
+                        raise "Parênteses não fechado"
+                else:
+                    raise "Parênteses não aberto"
                 
             if Parser.tokens.actual.tipo == "fim":
                 Parser.tokens.selectNext()
