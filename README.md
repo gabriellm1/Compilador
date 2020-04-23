@@ -16,7 +16,7 @@
 
 `BLOCK = "{", { COMMAND }, "}" ;`
 
-`COMMAND = ( λ | ASSIGNMENT | PRINT), ";" | BLOCK ;`
+`COMMAND = ( λ | ASSIGNMENT | PRINT | WHILE | IF), ";" | BLOCK ;`
 
 `WHILE = "while" , "(" , RELEXPR , ")" , COMMAND ;`
 
