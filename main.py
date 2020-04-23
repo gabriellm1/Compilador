@@ -39,7 +39,7 @@ class Tokenizer():
 
         self.origin = origin
         self.position = 0
-        self.reserveds = ["echo"]
+        self.reserveds = ["echo","while","if","else","or","and","readline"]
         self.actual = Token(type(1),0)
         self.selectNext()
 
@@ -75,15 +75,28 @@ class Tokenizer():
         elif self.origin[self.position] == "-":
             self.actual = Token("+ou-", "-")
             self.position += 1
+        elif self.origin[self.position] == "!":
+            self.actual = Token("+ou-", "!")
+            self.position += 1
         elif self.origin[self.position] == "*":
             self.actual = Token("*ou/", "*")
             self.position += 1
         elif self.origin[self.position] == "/":
             self.actual = Token("*ou/", "/")
             self.position += 1
+        elif self.origin[self.position] == ">":
+            self.actual = Token("rel", ">")
+            self.position += 1    
+        elif self.origin[self.position] == "<":
+            self.actual = Token("rel", "<")
+            self.position += 1    
         elif self.origin[self.position] == "=":
-            self.actual = Token("igual", "=")
-            self.position += 1
+            if self.origin[self.position+1] == "=":
+                self.actual = Token("rel", "==")
+                self.position += 2
+            else:
+                self.actual = Token("igual", "=")
+                self.position += 1
         elif self.origin[self.position] == "(":
             self.actual = Token("abre(", "(")
             self.position += 1
@@ -112,9 +125,8 @@ class Tokenizer():
                 self.position+=1
                 if final == self.position:
                     break
-            self.actual = Token("echo",buf)
             if buf.lower() in self.reserveds:
-                self.actual = Token("echo",buf.lower())
+                self.actual = Token("reserved",buf.lower())
             else:
                 raise "Not reserved word or variable"
     
@@ -143,12 +155,33 @@ class Assingnment(Node):
     def Evaluate(self,table):
         table.Setter(self.value,self.children[0].Evaluate(table))
         
-
 class Identifier(Node):
     def __init__(self,value):
         self.value = value
     def Evaluate(self,table):
         return table.Getter(self.value)
+
+class Readline(Node):
+    def __init__(self):
+        pass
+    def Evaluate(self,table):
+        return int(input())
+
+class IF(Node):
+    def __init__(self,children):
+        self.children = children
+    def Evaluate(self,table):
+        if self.children[0].Evaluate(table):
+            self.children[1].Evaluate(table)
+        elif len(self.children) == 3:
+            self.children[2].Evaluate(table)
+
+class WHILE(Node):
+    def __init__(self,children):
+        self.children = children
+    def Evaluate(self,table):
+        while self.children[0].Evaluate(table):
+            self.children[1].Evaluate(table)    
 
 class Echo(Node):
     def __init__(self,children):
@@ -173,6 +206,23 @@ class BinOp(Node):
 
         elif self.value == "-":
             return self.children[0].Evaluate(table) - self.children[1].Evaluate(table)
+        
+        elif self.value == "and":
+            return self.children[0].Evaluate(table) and self.children[1].Evaluate(table)
+        
+        elif self.value == "or":
+            return self.children[0].Evaluate(table) or self.children[1].Evaluate(table)
+
+        elif self.value == "==":
+            return self.children[0].Evaluate(table) == self.children[1].Evaluate(table)
+
+        elif self.value == ">":
+            return self.children[0].Evaluate(table) > self.children[1].Evaluate(table)
+
+        elif self.value == "<":
+            return self.children[0].Evaluate(table) < self.children[1].Evaluate(table)
+
+
 
 class UnOp(Node):
     def __init__(self,value,children):
@@ -185,6 +235,8 @@ class UnOp(Node):
 
         elif self.value == "-":
             return  - self.children[0].Evaluate(table)
+        elif self.value == "!":
+            return  not self.children[0].Evaluate(table)
 
 class IntVal(Node):
     def __init__(self,value):
@@ -231,13 +283,27 @@ class Parser():
             elif Parser.tokens.actual.value == "-":
                 Parser.tokens.selectNext()
                 return UnOp("-",[Parser.parseFactor()])
+            elif Parser.tokens.actual.value == "!":
+                Parser.tokens.selectNext()
+                return UnOp("!",[Parser.parseFactor()])            
         elif Parser.tokens.actual.tipo == "abre(":
             Parser.tokens.selectNext()
-            node = Parser.parseExpression()
+            node = Parser.parseRelexpression()
             if Parser.tokens.actual.tipo != "fecha)":
                 raise "Parênteses não fechado"
             Parser.tokens.selectNext()
             return node
+        elif Parser.tokens.actual.tipo == "reserved":
+            Parser.tokens.selectNext()
+            if Parser.tokens.actual.tipo == "abre(":
+                Parser.tokens.selectNext()
+                if Parser.tokens.actual.tipo == "fecha)":
+                    Parser.tokens.selectNext()
+                    return Readline()
+                else:
+                    raise "Parênteses não fechado"
+            else:
+                 raise "Parênteses não aberto"     
         else:
             raise "Erro de formatação"
 
@@ -245,26 +311,47 @@ class Parser():
     @staticmethod
     def parseTerm():
         node = Parser.parseFactor()
-        while (Parser.tokens.actual.tipo == "*ou/"):
+        while (Parser.tokens.actual.tipo == "*ou/") or (Parser.tokens.actual.value == "and"):
             if Parser.tokens.actual.value == "*":
                 Parser.tokens.selectNext()
                 node = BinOp("*",[node, Parser.parseFactor()])
             elif Parser.tokens.actual.value == "/":
                 Parser.tokens.selectNext()
                 node = BinOp("/",[node, Parser.parseFactor()])
+            elif Parser.tokens.actual.value == "and":
+                Parser.tokens.selectNext()
+                node = BinOp("and",[node, Parser.parseFactor()])
         return node
 
 
     @staticmethod
     def parseExpression():
         node = Parser.parseTerm()
-        while (Parser.tokens.actual.tipo == "+ou-"):
+        while (Parser.tokens.actual.tipo == "+ou-") or (Parser.tokens.actual.value == "or"):
             if Parser.tokens.actual.value == "+":
                 Parser.tokens.selectNext()
                 node = BinOp("+",[node, Parser.parseTerm()])
             elif Parser.tokens.actual.value == "-":
                 Parser.tokens.selectNext()
                 node = BinOp("-",[node, Parser.parseTerm()])
+            elif Parser.tokens.actual.value == "or":
+                Parser.tokens.selectNext()
+                node = BinOp("or",[node, Parser.parseTerm()])
+        return node
+
+    @staticmethod
+    def parseRelexpression():
+        node = Parser.parseExpression()
+        while (Parser.tokens.actual.tipo == "rel"):
+            if Parser.tokens.actual.value == "==":
+                Parser.tokens.selectNext()
+                node = BinOp("==",[node, Parser.parseExpression()])
+            elif Parser.tokens.actual.value == ">":
+                Parser.tokens.selectNext()
+                node = BinOp(">",[node, Parser.parseExpression()])
+            elif Parser.tokens.actual.value == "<":
+                Parser.tokens.selectNext()
+                node = BinOp("<",[node, Parser.parseExpression()])
         return node
 
     @staticmethod
@@ -274,7 +361,7 @@ class Parser():
             Parser.tokens.selectNext()
             if Parser.tokens.actual.tipo == "igual":
                 Parser.tokens.selectNext()
-                node = Assingnment(var_name,[Parser.parseExpression()])
+                node = Assingnment(var_name,[Parser.parseRelexpression()])
             else:
                 raise "Erro de formatação"
             if Parser.tokens.actual.tipo == "fim":
@@ -282,9 +369,43 @@ class Parser():
                 return node
             else:
                 raise "Falta ; no fim da linha"
-        elif Parser.tokens.actual.tipo == "echo":
-            Parser.tokens.selectNext()
-            node = Echo([Parser.parseExpression()])
+        elif Parser.tokens.actual.tipo == "reserved":
+            if Parser.tokens.actual.value == "echo":
+                Parser.tokens.selectNext()
+                node = Echo([Parser.parseRelexpression()])
+
+            elif Parser.tokens.actual.value == "if":
+                Parser.tokens.selectNext()
+                if Parser.tokens.actual.tipo == "abre(":
+                    Parser.tokens.selectNext()
+                    cond = Parser.parseRelexpression()
+                    if Parser.tokens.actual.tipo == "fecha)":
+                        Parser.tokens.selectNext()
+                        ifnode = Parser.parseCommand()
+                        if Parser.tokens.actual.value == "else":
+                            Parser.tokens.selectNext()
+                            return IF([cond,ifnode,Parser.parseCommand()])
+                        else:
+                            return IF([cond,ifnode])
+                    else:
+                        raise "Parênteses não fechado"
+                else:
+                    raise "Parênteses não aberto"
+
+
+            elif Parser.tokens.actual.value == "while":
+                Parser.tokens.selectNext()
+                if Parser.tokens.actual.tipo == "abre(":
+                    Parser.tokens.selectNext()
+                    cond = Parser.parseRelexpression()
+                    if Parser.tokens.actual.tipo == "fecha)":
+                        Parser.tokens.selectNext()
+                        return WHILE([cond,Parser.parseCommand()])
+                    else:
+                        raise "Parênteses não fechado"
+                else:
+                    raise "Parênteses não aberto"
+                
             if Parser.tokens.actual.tipo == "fim":
                 Parser.tokens.selectNext()
                 return node
