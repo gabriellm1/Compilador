@@ -39,7 +39,7 @@ class Tokenizer():
 
         self.origin = origin
         self.position = 0
-        self.reserveds = ["echo","while","if","else","or","and","readline"]
+        self.reserveds = ["echo","while","if","else","or","and","readline","true","false"]
         self.actual = Token(type(1),0)
         self.selectNext()
 
@@ -54,7 +54,16 @@ class Tokenizer():
                 if final == self.position:
                     break
         if final == self.position:
-            self.actual = Token(type("EOF"),"EOF")    
+            self.actual = Token(type("EOF"),"EOF")
+        elif  self.origin[self.position] == '"':
+            self.position+=1
+            while (self.origin[self.position] != '"'):
+                buf += self.origin[self.position]
+                self.position+=1
+                if final == self.position:
+                    break
+            self.position+=1
+            self.actual = Token("string",buf)
         elif self.origin[self.position] == "$":
             buf="$"
             self.position+=1
@@ -78,6 +87,9 @@ class Tokenizer():
         elif self.origin[self.position] == "!":
             self.actual = Token("+ou-", "!")
             self.position += 1
+        elif self.origin[self.position] == ".":
+            self.actual = Token("concat", ".")
+            self.position += 1
         elif self.origin[self.position] == "*":
             self.actual = Token("*ou/", "*")
             self.position += 1
@@ -88,8 +100,12 @@ class Tokenizer():
             self.actual = Token("rel", ">")
             self.position += 1    
         elif self.origin[self.position] == "<":
-            self.actual = Token("rel", "<")
-            self.position += 1    
+            if self.origin[self.position+1] == "?" and self.origin[self.position+2] == "p" and self.origin[self.position+3] == "h" and self.origin[self.position+4] == "p":
+                self.actual = Token("init_prog", "<?php")
+                self.position += 5
+            else:
+                self.actual = Token("rel", "<")
+                self.position += 1    
         elif self.origin[self.position] == "=":
             if self.origin[self.position+1] == "=":
                 self.actual = Token("rel", "==")
@@ -112,6 +128,9 @@ class Tokenizer():
         elif self.origin[self.position] == ";":
             self.actual = Token("fim", ";")
             self.position += 1
+        elif self.origin[self.position] == "?" and self.origin[self.position+1] == ">":
+            self.actual = Token("end_prog", "?>")
+            self.position += 2        
         elif self.origin[self.position].isnumeric():
             while self.origin[self.position].isnumeric():
                 buf += self.origin[self.position]
@@ -165,13 +184,13 @@ class Readline(Node):
     def __init__(self):
         pass
     def Evaluate(self,table):
-        return int(input())
+        return ["int",int(input())]
 
 class IF(Node):
     def __init__(self,children):
         self.children = children
     def Evaluate(self,table):
-        if self.children[0].Evaluate(table):
+        if self.children[0].Evaluate(table)[1]:
             self.children[1].Evaluate(table)
         elif len(self.children) == 3:
             self.children[2].Evaluate(table)
@@ -180,14 +199,14 @@ class WHILE(Node):
     def __init__(self,children):
         self.children = children
     def Evaluate(self,table):
-        while self.children[0].Evaluate(table):
-            self.children[1].Evaluate(table)    
+        while self.children[0].Evaluate(table)[1]:
+            self.children[1].Evaluate(table)  
 
 class Echo(Node):
     def __init__(self,children):
         self.children = children
     def Evaluate(self,table):
-        print(self.children[0].Evaluate(table))
+        print(self.children[0].Evaluate(table)[1])
 
 class BinOp(Node):
     def __init__(self,value,children):
@@ -195,32 +214,84 @@ class BinOp(Node):
         self.children = children
     
     def Evaluate(self,table):
+        if self.value == "and" or self.value == "or":
+            if self.children[0].Evaluate(table)[0] == 'int':
+                if self.children[0].Evaluate(table)[1] != 0:
+                    first = ["int",True]
+                else:
+                    first = ["int",False]
+            elif self.children[0].Evaluate(table)[0] == 'string':
+                raise "Tipos de variáveis incompatíveis"
+            else:
+                first = self.children[0].Evaluate(table)
+            if self.children[1].Evaluate(table)[0] == 'int':
+                if self.children[1].Evaluate(table)[1] != 0:
+                    second = ["int",True]
+                else:
+                    second = ["int",False]
+            elif self.children[1].Evaluate(table)[0] == 'string':
+                raise "Tipos de variáveis incompatíveis"
+            else:
+                second = self.children[1].Evaluate(table)
+        else:
+            if self.children[0].Evaluate(table)[0] == 'bool':
+                if self.children[0].Evaluate(table)[1] == True:
+                    first = ["bool",1]
+                else:
+                    first = ["bool",0]
+            else:
+                first = self.children[0].Evaluate(table)
+            if self.children[1].Evaluate(table)[0] == 'bool':
+                if self.children[1].Evaluate(table)[1] == True:
+                    second = ["bool",1]
+                else:
+                    second = ["bool",0]
+            else:
+                second = self.children[1].Evaluate(table)
+
         if self.value == "*":
-            return self.children[0].Evaluate(table) * self.children[1].Evaluate(table)
+            if first[0] == "string" or second[0] == "string":
+                raise "Tipos de variáveis incompatíveis"
+            return ["int",first[1] * second[1]]
 
         elif self.value == "/":
-            return self.children[0].Evaluate(table) // self.children[1].Evaluate(table)
+            if first[0] == "string" or second[0] == "string":
+                raise "Tipos de variáveis incompatíveis"
+            return ["int",first[1] // second[1]]
 
         elif self.value == "+":
-            return self.children[0].Evaluate(table) + self.children[1].Evaluate(table)
+            if first[0] == "string" or second[0] == "string":
+                raise "Tipos de variáveis incompatíveis"
+            return ["int",first[1] + second[1]]
 
         elif self.value == "-":
-            return self.children[0].Evaluate(table) - self.children[1].Evaluate(table)
+            if first[0] == "string" or second[0] == "string":
+                raise "Tipos de variáveis incompatíveis"
+            return ["int",first[1] - second[1]]
         
         elif self.value == "and":
-            return self.children[0].Evaluate(table) and self.children[1].Evaluate(table)
+            return ["bool",first[1] and second[1]]
         
         elif self.value == "or":
-            return self.children[0].Evaluate(table) or self.children[1].Evaluate(table)
+            return ["bool",first[1] or second[1]]
 
         elif self.value == "==":
-            return self.children[0].Evaluate(table) == self.children[1].Evaluate(table)
+            if (first[0] == "string" and second[0] != "string") or (first[0] != "string" and second[0] == "string"):
+                raise "Tipos de variáveis incompatíveis"
+            return ["bool",first[1] == second[1]]
 
         elif self.value == ">":
-            return self.children[0].Evaluate(table) > self.children[1].Evaluate(table)
+            if first[0] == "string" or second[0] == "string":
+                raise "Tipos de variáveis incompatíveis"
+            return ["bool",first[1] > second[1]]
 
         elif self.value == "<":
-            return self.children[0].Evaluate(table) < self.children[1].Evaluate(table)
+            if first[0] == "string" or second[0] == "string":
+                raise "Tipos de variáveis incompatíveis"
+            return ["bool",first[1] < second[1]]
+
+        elif self.value == ".":
+            return ["string",str(first[1]) + str(second[1])]
 
 
 
@@ -230,20 +301,40 @@ class UnOp(Node):
         self.children = children
 
     def Evaluate(self,table):
-        if self.value == "+":
-            return  + self.children[0].Evaluate(table)
+        if self.children[0].Evaluate(table)[0] == "string":
+            raise "String não é compatível com operação unitária"
+        else:
+            if self.value == "+":
+                return  ["int",+ self.children[0].Evaluate(table)[1]]
 
-        elif self.value == "-":
-            return  - self.children[0].Evaluate(table)
-        elif self.value == "!":
-            return  not self.children[0].Evaluate(table)
+            elif self.value == "-":
+                return  ["int",- self.children[0].Evaluate(table)[1]]
+            elif self.value == "!":
+                return  ["bool",not self.children[0].Evaluate(table)[1]]
 
 class IntVal(Node):
     def __init__(self,value):
         self.value = value
     
     def Evaluate(self,table):
-        return self.value
+        return ["int",self.value]
+
+class StringVal(Node):
+    def __init__(self,value):
+        self.value = value
+    
+    def Evaluate(self,table):
+        return ["string",self.value]
+
+class BoolVal(Node):
+    def __init__(self,value):
+        self.value = value
+    
+    def Evaluate(self,table):
+        if self.value == "true":
+            return ["bool",True]
+        elif self.value == "false":
+            return ["bool",False]
 
 class NoOp(Node):
     def __init__(self):
@@ -269,9 +360,13 @@ class Parser():
     @staticmethod
     def parseFactor():
         if Parser.tokens.actual.tipo is int:
-            resultado = Parser.tokens.actual.value
+            valor = Parser.tokens.actual.value
             Parser.tokens.selectNext()
-            return IntVal(resultado)
+            return IntVal(valor)
+        elif Parser.tokens.actual.tipo == "string":
+            valor = Parser.tokens.actual.value
+            Parser.tokens.selectNext()
+            return StringVal(valor)
         elif Parser.tokens.actual.tipo == "var":
             var_name = Parser.tokens.actual.value
             Parser.tokens.selectNext()
@@ -285,7 +380,7 @@ class Parser():
                 return UnOp("-",[Parser.parseFactor()])
             elif Parser.tokens.actual.value == "!":
                 Parser.tokens.selectNext()
-                return UnOp("!",[Parser.parseFactor()])            
+                return UnOp("!",[Parser.parseFactor()])
         elif Parser.tokens.actual.tipo == "abre(":
             Parser.tokens.selectNext()
             node = Parser.parseRelexpression()
@@ -294,16 +389,21 @@ class Parser():
             Parser.tokens.selectNext()
             return node
         elif Parser.tokens.actual.tipo == "reserved":
-            Parser.tokens.selectNext()
-            if Parser.tokens.actual.tipo == "abre(":
+            if Parser.tokens.actual.value == "readline":
                 Parser.tokens.selectNext()
-                if Parser.tokens.actual.tipo == "fecha)":
+                if Parser.tokens.actual.tipo == "abre(":
                     Parser.tokens.selectNext()
-                    return Readline()
+                    if Parser.tokens.actual.tipo == "fecha)":
+                        Parser.tokens.selectNext()
+                        return Readline()
+                    else:
+                        raise "Parênteses não fechado"
                 else:
-                    raise "Parênteses não fechado"
-            else:
-                 raise "Parênteses não aberto"     
+                    raise "Parênteses não aberto"     
+            elif Parser.tokens.actual.value == "true" or Parser.tokens.actual.value == "false":
+                node = BoolVal(Parser.tokens.actual.value)
+                Parser.tokens.selectNext()
+                return node
         else:
             raise "Erro de formatação"
 
@@ -327,7 +427,7 @@ class Parser():
     @staticmethod
     def parseExpression():
         node = Parser.parseTerm()
-        while (Parser.tokens.actual.tipo == "+ou-") or (Parser.tokens.actual.value == "or"):
+        while (Parser.tokens.actual.tipo == "+ou-") or (Parser.tokens.actual.value == "or") or (Parser.tokens.actual.value == "."):
             if Parser.tokens.actual.value == "+":
                 Parser.tokens.selectNext()
                 node = BinOp("+",[node, Parser.parseTerm()])
@@ -337,6 +437,9 @@ class Parser():
             elif Parser.tokens.actual.value == "or":
                 Parser.tokens.selectNext()
                 node = BinOp("or",[node, Parser.parseTerm()])
+            elif Parser.tokens.actual.value == ".":
+                Parser.tokens.selectNext()
+                node = BinOp(".",[node, Parser.parseTerm()])
         return node
 
     @staticmethod
@@ -430,6 +533,20 @@ class Parser():
             raise "Bloco não aberto com chaves({)"
 
 
+    @staticmethod
+    def parseProgram():
+        if Parser.tokens.actual.tipo == "init_prog":
+            Parser.tokens.selectNext()
+            node = Parser.parseCommand()
+            if Parser.tokens.actual.tipo == "end_prog":
+                Parser.tokens.selectNext()
+                return node
+            else:
+                raise "Program não fechado"
+        else:
+            raise "Programa não aberto"
+
+
             
 
     @staticmethod
@@ -437,7 +554,7 @@ class Parser():
         Parser.prepro = PrePro()
         pp_code = Parser.prepro.filter(code)
         Parser.tokens  = Tokenizer(pp_code)
-        root = Parser.parseBlock()
+        root = Parser.parseProgram()
         Parser.Table = SymbolTable()
         
         if Parser.tokens.actual.value == "EOF":
