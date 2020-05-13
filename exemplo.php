@@ -1,5 +1,5 @@
 <?php
-  {
+  
   $n = readline();
   $i = 1;
   $x = 1;
@@ -51,5 +51,5 @@
     $x = "a" == "b"; /* Ok, resultado bool: False */
     echo $x;
     if (tRuE==1) echo "fim do exemplo";
-  }
+  
 ?>

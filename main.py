@@ -533,18 +533,34 @@ class Parser():
             raise "Bloco não aberto com chaves({)"
 
 
+    # @staticmethod
+    # def parseProgram():
+    #     if Parser.tokens.actual.tipo == "init_prog":
+    #         Parser.tokens.selectNext()
+    #         node = Parser.parseCommand()
+    #         if Parser.tokens.actual.tipo == "end_prog":
+    #             Parser.tokens.selectNext()
+    #             return node
+    #         else:
+    #             raise "Program não fechado"
+    #     else:
+    #         raise "Programa não aberto"
+
     @staticmethod
     def parseProgram():
+        list_cmd = []
         if Parser.tokens.actual.tipo == "init_prog":
             Parser.tokens.selectNext()
-            node = Parser.parseCommand()
+            while Parser.tokens.actual.tipo != "end_prog":
+                list_cmd.append(Parser.parseCommand())
             if Parser.tokens.actual.tipo == "end_prog":
                 Parser.tokens.selectNext()
-                return node
+                return Command(list_cmd)
             else:
                 raise "Program não fechado"
         else:
             raise "Programa não aberto"
+
 
 
             
