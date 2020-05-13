@@ -153,12 +153,43 @@ class Tokenizer():
             raise "Caracter inválido"
 
 
+class assembly_gen():
+
+    @staticmethod    
+    def init_code():
+        assembly_gen.buffer = ""
+
+
+    @staticmethod    
+    def write_code(code):
+        assembly_gen.buffer+=code
+        #print(assembly_gen.buffer)
+
+    @staticmethod    
+    def flush():
+        f = open("assembly.nasm",'a')
+
+        f.write(assembly_gen.buffer)
+
+        final = "\n\n\n\n; interrupcao de saida\n   POP EBP\n   MOV EAX, 1\n    INT 0x80\n"
+        f.write(final)
+        f.close()
+
+    
+
+
+
+
 class Node():
     def __init__(self,value,children):
         self.value = value
         self.children = children
+        self.i = 0
     def Evaluate(self,table):
         pass
+    def newId(self):
+        self.i += 1
+        return self.i
 
 class Command(Node):
     def __init__(self,children):
@@ -172,13 +203,24 @@ class Assingnment(Node):
         self.value = value
         self.children = children
     def Evaluate(self,table):
-        table.Setter(self.value,self.children[0].Evaluate(table))
+        if table.isNew(self.value):
+            assembly_gen.write_code("\nPUSH DWORD 0")
+            self.children[0].Evaluate(table)
+            table.desloc+=4
+            table.Setter(self.value,table.desloc)
+            assembly_gen.write_code("\nMOV [EBP-{}], EBX".format(table.desloc))
+        else:
+            self.children[0].Evaluate(table)
+            assembly_gen.write_code("\nMOV [EBP-{}], EBX".format(table.Getter(self.value)))
+
+
         
 class Identifier(Node):
     def __init__(self,value):
         self.value = value
     def Evaluate(self,table):
-        return table.Getter(self.value)
+        #return table.Getter(self.value)
+        assembly_gen.write_code("\nMOV EBX, [EBP-{}]".format(table.Getter(self.value)))
 
 class Readline(Node):
     def __init__(self):
@@ -189,24 +231,53 @@ class Readline(Node):
 class IF(Node):
     def __init__(self,children):
         self.children = children
+        self.i = 0
     def Evaluate(self,table):
-        if self.children[0].Evaluate(table)[1]:
+        id = self.newId()
+        assembly_gen.write_code("\nIF_{}:".format(id))
+        self.children[0].Evaluate(table)
+        assembly_gen.write_code("\nCMP EBX, False")
+        if len(self.children) == 3:
+            assembly_gen.write_code("\nJE ELSE_{}".format(id))
             self.children[1].Evaluate(table)
-        elif len(self.children) == 3:
+            assembly_gen.write_code("\nJMP ENDIF_{}".format(id))
+            assembly_gen.write_code("\nELSE_{}:".format(id))
             self.children[2].Evaluate(table)
+            assembly_gen.write_code("\nENDIF_{}:".format(id))
+        else:
+            assembly_gen.write_code("\nJE Exit_{}".format(id))
+            self.children[1].Evaluate(table)
+            assembly_gen.write_code("\nENDIF_{}:".format(id))
+        # if self.children[0].Evaluate(table)[1]:
+        #     self.children[1].Evaluate(table)
+        # elif len(self.children) == 3:
+        #     self.children[2].Evaluate(table)
 
 class WHILE(Node):
     def __init__(self,children):
         self.children = children
+        self.i = 0
     def Evaluate(self,table):
-        while self.children[0].Evaluate(table)[1]:
-            self.children[1].Evaluate(table)  
+        id = self.newId()
+        assembly_gen.write_code("\nLOOP_{}:".format(id))
+        self.children[0].Evaluate(table)
+        assembly_gen.write_code("\nCMP EBX, False")
+        assembly_gen.write_code("\nJE EXIT_{}".format(id))
+        self.children[1].Evaluate(table) 
+        # while self.children[0].Evaluate(table)[1]:
+        #     self.children[1].Evaluate(table)  
+        assembly_gen.write_code("\nJUMP LOOP_{}".format(id))
+        assembly_gen.write_code("\nEXIT_{}:".format(id))
 
 class Echo(Node):
     def __init__(self,children):
         self.children = children
     def Evaluate(self,table):
-        print(self.children[0].Evaluate(table)[1])
+        self.children[0].Evaluate(table)
+        assembly_gen.write_code("\nPUSH EBX")
+        assembly_gen.write_code("\nCALL print")
+        assembly_gen.write_code("\nPOP EBX")
+        #print(self.children[0].Evaluate(table)[1])
 
 class BinOp(Node):
     def __init__(self,value,children):
@@ -214,84 +285,86 @@ class BinOp(Node):
         self.children = children
     
     def Evaluate(self,table):
-        if self.value == "and" or self.value == "or":
-            if self.children[0].Evaluate(table)[0] == 'int':
-                if self.children[0].Evaluate(table)[1] != 0:
-                    first = ["int",True]
-                else:
-                    first = ["int",False]
-            elif self.children[0].Evaluate(table)[0] == 'string':
-                raise "Tipos de variáveis incompatíveis"
-            else:
-                first = self.children[0].Evaluate(table)
-            if self.children[1].Evaluate(table)[0] == 'int':
-                if self.children[1].Evaluate(table)[1] != 0:
-                    second = ["int",True]
-                else:
-                    second = ["int",False]
-            elif self.children[1].Evaluate(table)[0] == 'string':
-                raise "Tipos de variáveis incompatíveis"
-            else:
-                second = self.children[1].Evaluate(table)
-        else:
-            if self.children[0].Evaluate(table)[0] == 'bool':
-                if self.children[0].Evaluate(table)[1] == True:
-                    first = ["bool",1]
-                else:
-                    first = ["bool",0]
-            else:
-                first = self.children[0].Evaluate(table)
-            if self.children[1].Evaluate(table)[0] == 'bool':
-                if self.children[1].Evaluate(table)[1] == True:
-                    second = ["bool",1]
-                else:
-                    second = ["bool",0]
-            else:
-                second = self.children[1].Evaluate(table)
-
         if self.value == "*":
-            if first[0] == "string" or second[0] == "string":
-                raise "Tipos de variáveis incompatíveis"
-            return ["int",first[1] * second[1]]
+            self.children[0].Evaluate(table)
+            assembly_gen.write_code("\nPUSH EBX")
+            self.children[1].Evaluate(table)
+            assembly_gen.write_code("\nPOP EAX")
+            assembly_gen.write_code("\nIMUL EBX")
+            assembly_gen.write_code("\nMOV EBX, EAX")
+            #return self.children[0].Evaluate(table) * self.children[1].Evaluate(table)
 
         elif self.value == "/":
-            if first[0] == "string" or second[0] == "string":
-                raise "Tipos de variáveis incompatíveis"
-            return ["int",first[1] // second[1]]
+            self.children[0].Evaluate(table)
+            assembly_gen.write_code("\nPUSH EBX")
+            self.children[1].Evaluate(table)
+            assembly_gen.write_code("\nPOP EAX")
+            assembly_gen.write_code("\nIDIV EBX")
+            assembly_gen.write_code("\nMOV EBX, EAX")
+            #return self.children[0].Evaluate(table) // self.children[1].Evaluate(table)
 
         elif self.value == "+":
-            if first[0] == "string" or second[0] == "string":
-                raise "Tipos de variáveis incompatíveis"
-            return ["int",first[1] + second[1]]
+            self.children[0].Evaluate(table)
+            assembly_gen.write_code("\nPUSH EBX")
+            self.children[1].Evaluate(table)
+            assembly_gen.write_code("\nPOP EAX")
+            assembly_gen.write_code("\nADD EAX, EBX")
+            assembly_gen.write_code("\nMOV EBX, EAX")
+            #return self.children[0].Evaluate(table) + self.children[1].Evaluate(table)
 
         elif self.value == "-":
-            if first[0] == "string" or second[0] == "string":
-                raise "Tipos de variáveis incompatíveis"
-            return ["int",first[1] - second[1]]
+            self.children[0].Evaluate(table)
+            assembly_gen.write_code("\nPUSH EBX")
+            self.children[1].Evaluate(table)
+            assembly_gen.write_code("\nPOP EAX")
+            assembly_gen.write_code("\nSUB EAX, EBX")
+            assembly_gen.write_code("\nMOV EBX, EAX")
+            #return self.children[0].Evaluate(table) - self.children[1].Evaluate(table)
         
         elif self.value == "and":
-            return ["bool",first[1] and second[1]]
+            self.children[0].Evaluate(table)
+            assembly_gen.write_code("\nPUSH EBX")
+            self.children[1].Evaluate(table)
+            assembly_gen.write_code("\nPOP EAX")
+            assembly_gen.write_code("\nAND EAX, EBX")
+            assembly_gen.write_code("\nMOV EBX, EAX")
+            #return self.children[0].Evaluate(table) and self.children[1].Evaluate(table)
         
         elif self.value == "or":
-            return ["bool",first[1] or second[1]]
+            self.children[0].Evaluate(table)
+            assembly_gen.write_code("\nPUSH EBX")
+            self.children[1].Evaluate(table)
+            assembly_gen.write_code("\nPOP EAX")
+            assembly_gen.write_code("\nOR EAX, EBX")
+            assembly_gen.write_code("\nMOV EBX, EAX")
+            #return self.children[0].Evaluate(table) or self.children[1].Evaluate(table)
 
         elif self.value == "==":
-            if (first[0] == "string" and second[0] != "string") or (first[0] != "string" and second[0] == "string"):
-                raise "Tipos de variáveis incompatíveis"
-            return ["bool",first[1] == second[1]]
+            self.children[0].Evaluate(table)
+            assembly_gen.write_code("\nPUSH EBX")
+            self.children[1].Evaluate(table)
+            assembly_gen.write_code("\nPOP EAX")
+            assembly_gen.write_code("\nCMP EAX, EBX")
+            assembly_gen.write_code("\nCALL binop_je")
+            #return self.children[0].Evaluate(table) == self.children[1].Evaluate(table)
 
         elif self.value == ">":
-            if first[0] == "string" or second[0] == "string":
-                raise "Tipos de variáveis incompatíveis"
-            return ["bool",first[1] > second[1]]
+            self.children[0].Evaluate(table)
+            assembly_gen.write_code("\nPUSH EBX")
+            self.children[1].Evaluate(table)
+            assembly_gen.write_code("\nPOP EAX")
+            assembly_gen.write_code("\nCMP EAX, EBX")
+            assembly_gen.write_code("\nCALL binop_jg")
+            #return self.children[0].Evaluate(table) > self.children[1].Evaluate(table)
 
         elif self.value == "<":
-            if first[0] == "string" or second[0] == "string":
-                raise "Tipos de variáveis incompatíveis"
-            return ["bool",first[1] < second[1]]
-
-        elif self.value == ".":
-            return ["string",str(first[1]) + str(second[1])]
+            self.children[0].Evaluate(table)
+            assembly_gen.write_code("\nPUSH EBX")
+            self.children[1].Evaluate(table)
+            assembly_gen.write_code("\nPOP EAX")
+            assembly_gen.write_code("\nCMP EAX, EBX")
+            assembly_gen.write_code("\nCALL binop_jl")
+            #return self.children[0].Evaluate(table) < self.children[1].Evaluate(table)
 
 
 
@@ -317,7 +390,8 @@ class IntVal(Node):
         self.value = value
     
     def Evaluate(self,table):
-        return ["int",self.value]
+        assembly_gen.write_code("\nMOV EBX, {}".format(self.value))
+        #return ["int",self.value]
 
 class StringVal(Node):
     def __init__(self,value):
@@ -332,9 +406,11 @@ class BoolVal(Node):
     
     def Evaluate(self,table):
         if self.value == "true":
-            return ["bool",True]
+            assembly_gen.write_code("\nMOV EBX, {}".format("1"))
+            #return ["bool",True]
         elif self.value == "false":
-            return ["bool",False]
+            assembly_gen.write_code("\nMOV EBX, {}".format("0"))
+            #return ["bool",False]
 
 class NoOp(Node):
     def __init__(self):
@@ -345,12 +421,16 @@ class NoOp(Node):
 class SymbolTable:
     def __init__(self):
         self.table = {}
+        self.desloc = 0
     def Setter(self,simbol,value):
         self.table[simbol] = value
     def Getter(self,simbol):
         if simbol not in self.table.keys():
             raise "Variável não inicializada"
         return self.table[simbol]
+    def isNew(self,simbol):
+        if simbol not in self.table.keys():
+            return True
 
 
 
@@ -363,10 +443,10 @@ class Parser():
             valor = Parser.tokens.actual.value
             Parser.tokens.selectNext()
             return IntVal(valor)
-        elif Parser.tokens.actual.tipo == "string":
-            valor = Parser.tokens.actual.value
-            Parser.tokens.selectNext()
-            return StringVal(valor)
+        # elif Parser.tokens.actual.tipo == "string":
+        #     valor = Parser.tokens.actual.value
+        #     Parser.tokens.selectNext()
+        #     return StringVal(valor)
         elif Parser.tokens.actual.tipo == "var":
             var_name = Parser.tokens.actual.value
             Parser.tokens.selectNext()
@@ -437,9 +517,9 @@ class Parser():
             elif Parser.tokens.actual.value == "or":
                 Parser.tokens.selectNext()
                 node = BinOp("or",[node, Parser.parseTerm()])
-            elif Parser.tokens.actual.value == ".":
-                Parser.tokens.selectNext()
-                node = BinOp(".",[node, Parser.parseTerm()])
+            # elif Parser.tokens.actual.value == ".":
+            #     Parser.tokens.selectNext()
+            #     node = BinOp(".",[node, Parser.parseTerm()])
         return node
 
     @staticmethod
@@ -556,6 +636,7 @@ class Parser():
         Parser.tokens  = Tokenizer(pp_code)
         root = Parser.parseProgram()
         Parser.Table = SymbolTable()
+        assembly_gen.init_code()
         
         if Parser.tokens.actual.value == "EOF":
             return root.Evaluate(Parser.Table)
@@ -573,6 +654,7 @@ if __name__ == "__main__":
         with open(file, "r") as source:
             conta = source.read()
     Parser.run(conta)
+    assembly_gen.flush()
 
         
 
