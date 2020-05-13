@@ -157,7 +157,8 @@ class assembly_gen():
 
     @staticmethod    
     def init_code():
-        assembly_gen.buffer = ""
+        with open('inicio.asm', 'r') as inicial:
+            assembly_gen.buffer = inicial.read()
 
 
     @staticmethod    
@@ -167,7 +168,8 @@ class assembly_gen():
 
     @staticmethod    
     def flush():
-        f = open("assembly.nasm",'a')
+
+        f = open("program.asm",'w')        
 
         f.write(assembly_gen.buffer)
 
@@ -184,12 +186,13 @@ class Node():
     def __init__(self,value,children):
         self.value = value
         self.children = children
-        self.i = 0
     def Evaluate(self,table):
         pass
-    def newId(self):
-        self.i += 1
-        return self.i
+    id = 0
+    @staticmethod
+    def newId():
+        Node.id += 1
+        return Node.id
 
 class Command(Node):
     def __init__(self,children):
@@ -231,23 +234,22 @@ class Readline(Node):
 class IF(Node):
     def __init__(self,children):
         self.children = children
-        self.i = 0
+        self.id = Node.newId()
     def Evaluate(self,table):
-        id = self.newId()
-        assembly_gen.write_code("\nIF_{}:".format(id))
+        assembly_gen.write_code("\nIF_{}:".format(self.id))
         self.children[0].Evaluate(table)
         assembly_gen.write_code("\nCMP EBX, False")
         if len(self.children) == 3:
-            assembly_gen.write_code("\nJE ELSE_{}".format(id))
+            assembly_gen.write_code("\nJE ELSE_{}".format(self.id))
             self.children[1].Evaluate(table)
-            assembly_gen.write_code("\nJMP ENDIF_{}".format(id))
-            assembly_gen.write_code("\nELSE_{}:".format(id))
+            assembly_gen.write_code("\nJMP ENDIF_{}".format(self.id))
+            assembly_gen.write_code("\nELSE_{}:".format(self.id))
             self.children[2].Evaluate(table)
-            assembly_gen.write_code("\nENDIF_{}:".format(id))
+            assembly_gen.write_code("\nENDIF_{}:".format(self.id))
         else:
-            assembly_gen.write_code("\nJE Exit_{}".format(id))
+            assembly_gen.write_code("\nJE ENDIF_{}".format(self.id))
             self.children[1].Evaluate(table)
-            assembly_gen.write_code("\nENDIF_{}:".format(id))
+            assembly_gen.write_code("\nENDIF_{}:".format(self.id))
         # if self.children[0].Evaluate(table)[1]:
         #     self.children[1].Evaluate(table)
         # elif len(self.children) == 3:
@@ -256,18 +258,18 @@ class IF(Node):
 class WHILE(Node):
     def __init__(self,children):
         self.children = children
-        self.i = 0
+        self.id = Node.newId()
     def Evaluate(self,table):
         id = self.newId()
-        assembly_gen.write_code("\nLOOP_{}:".format(id))
+        assembly_gen.write_code("\nLOOP_{}:".format(self.id))
         self.children[0].Evaluate(table)
         assembly_gen.write_code("\nCMP EBX, False")
-        assembly_gen.write_code("\nJE EXIT_{}".format(id))
+        assembly_gen.write_code("\nJE EXIT_{}".format(self.id))
         self.children[1].Evaluate(table) 
         # while self.children[0].Evaluate(table)[1]:
         #     self.children[1].Evaluate(table)  
-        assembly_gen.write_code("\nJUMP LOOP_{}".format(id))
-        assembly_gen.write_code("\nEXIT_{}:".format(id))
+        assembly_gen.write_code("\nJMP LOOP_{}".format(self.id))
+        assembly_gen.write_code("\nEXIT_{}:".format(self.id))
 
 class Echo(Node):
     def __init__(self,children):
@@ -374,16 +376,21 @@ class UnOp(Node):
         self.children = children
 
     def Evaluate(self,table):
-        if self.children[0].Evaluate(table)[0] == "string":
-            raise "String não é compatível com operação unitária"
-        else:
-            if self.value == "+":
-                return  ["int",+ self.children[0].Evaluate(table)[1]]
+        # if self.children[0].Evaluate(table)[0] == "string":
+        #     raise "String não é compatível com operação unitária"
+        # else:
+        if self.value == "+":
+            self.children[0].Evaluate(table)
+            #return  ["int",+ self.children[0].Evaluate(table)[1]]
 
-            elif self.value == "-":
-                return  ["int",- self.children[0].Evaluate(table)[1]]
-            elif self.value == "!":
-                return  ["bool",not self.children[0].Evaluate(table)[1]]
+        elif self.value == "-":
+            self.children[0].Evaluate(table)
+            assembly_gen.write_code("\nNEG EBX")
+            #return  ["int",- self.children[0].Evaluate(table)[1]]
+        elif self.value == "!":
+            self.children[0].Evaluate(table)
+            assembly_gen.write_code("\nNOT EBX")
+            #return  ["bool",not self.children[0].Evaluate(table)[1]]
 
 class IntVal(Node):
     def __init__(self,value):
@@ -615,12 +622,14 @@ class Parser():
 
     @staticmethod
     def parseProgram():
+        list_cmd = []
         if Parser.tokens.actual.tipo == "init_prog":
             Parser.tokens.selectNext()
-            node = Parser.parseCommand()
+            while Parser.tokens.actual.tipo != "end_prog":
+                list_cmd.append(Parser.parseCommand())
             if Parser.tokens.actual.tipo == "end_prog":
                 Parser.tokens.selectNext()
-                return node
+                return Command(list_cmd)
             else:
                 raise "Program não fechado"
         else:

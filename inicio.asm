@@ -81,4 +81,3 @@ _start:
   MOV EBP, ESP ; estabelece um novo base pointer
 
   ; codigo gerado pelo compilador
-

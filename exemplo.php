@@ -1,9 +1,13 @@
 <?php
-  {
+  
   $n = 8;
   $i = 1;
   $x = 1;
   $y = 4;
+  echo $n;
+  echo $i;
+  echo $x;
+  echo $y;
     while (($i < $n) or ($i == $n)) {
       if ($x > $y){
         $y = $y + 1;
@@ -15,6 +19,10 @@
           }   
           $i = $i + 1;
       }
+    echo $n;
+    echo $i;
+    echo $x;
+    echo $y;
     $g = false;
     $t = TrUe;
     $counter = 0;
@@ -30,5 +38,5 @@
   echo $counter;
   echo $g;
   echo $t;
-  }
+  
 ?>
