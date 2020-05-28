@@ -40,13 +40,15 @@
 
 `TERM = FACTOR, {("*" | "/" | "and"), FACTOR} ;`
 
-`FACTOR = NUMBER | STRING | ("+" | "-" | "!"), FACTOR | "(",RELEXPR,")" | readline , "(" , ")" | IDENTIFIER | name , "(" , {RELEXPR {"," , RELEXPR} } , ")" ;`
+`FACTOR = NUMBER | STRING | BOOL | ("+" | "-" | "!"), FACTOR | "(",RELEXPR,")" | readline , "(" , ")" | IDENTIFIER | name , "(" , {RELEXPR {"," , RELEXPR} } , ")" ;`
 
 `IDENTIFIER = "$", LETTER, { LETTER | DIGIT | "_" };`
 
 `STRING = """ (LETTER | NUMBER | SYMBOL), {LETTER | NUMBER | SYMBOL} """;`
 
 `LETTER = ( a | ... | z | A | ... | Z ) ;`
+
+`BOOL = True | False`
 
 `NUMBER = DIGIT, {DIGIT} ; `
 
