@@ -39,7 +39,8 @@ class Tokenizer():
 
         self.origin = origin
         self.position = 0
-        self.reserveds = ["echo","while","if","else","or","and","readline","true","false"]
+        self.reserveds = ["echo","while","if","else","or","and","readline","true","false","function","return"]
+        self.functions = []
         self.actual = Token(type(1),0)
         self.selectNext()
 
@@ -138,6 +139,9 @@ class Tokenizer():
                 if final == self.position:
                     break
             self.actual = Token(type(1),int(buf))
+        elif self.origin[self.position] == ",":
+            self.actual = Token("separador",",")
+            self.position+=1
         elif self.origin[self.position].isalpha():
             while self.origin[self.position].isalpha():
                 buf += self.origin[self.position]
@@ -146,8 +150,11 @@ class Tokenizer():
                     break
             if buf.lower() in self.reserveds:
                 self.actual = Token("reserved",buf.lower())
+            elif self.actual.value == "function":
+                self.actual = Token("func_name",buf.lower())
             else:
-                raise "Not reserved word or variable"
+                self.actual = Token("pos_func",buf.lower())
+                #raise "Not reserved word or variable"
     
         else:
             raise "Caracter inválido"
@@ -160,12 +167,46 @@ class Node():
     def Evaluate(self,table):
         pass
 
+class FuncDec(Node):
+    def __init__(self,value,children):
+        self.value = value # nome funcao
+        self.children = children # n - ident / n+1 - return
+    def Evaluate(self,table):
+        table.FuncSet(self.value,self.children)
+
+class FuncCall(Node):
+    def __init__(self,value,children):
+        self.value = value
+        self.children = children
+    def Evaluate(self,table):
+        func = table.FuncGet(self.value) # self.children do funcdec
+        parameters = func[:-1]
+        if (len(parameters) == len(self.children)):
+            local_table = SymbolTable()
+            for i in range(len(parameters)):
+                local_table.Setter(parameters[i].value,self.children[i].Evaluate(table))
+            func[-1].Evaluate(local_table)
+            if "return" in local_table.table.keys():
+                return local_table.table["return"]
+            else:
+                return ["string",""]
+        else:
+            raise "Quantidade de parâmetros errada"
+
+class Return(Node):
+    def __init__(self,value):
+        self.value = value
+    def Evaluate(self,table):
+        table.Setter("return",self.value.Evaluate(table))
+
 class Command(Node):
     def __init__(self,children):
         self.children = children
     def Evaluate(self,table):
         for node in self.children:
             node.Evaluate(table)
+            if isinstance(node,Return):
+                break
 
 class Assingnment(Node):
     def __init__(self,value,children):
@@ -293,8 +334,6 @@ class BinOp(Node):
         elif self.value == ".":
             return ["string",str(first[1]) + str(second[1])]
 
-
-
 class UnOp(Node):
     def __init__(self,value,children):
         self.value = value
@@ -343,14 +382,28 @@ class NoOp(Node):
         pass
 
 class SymbolTable:
+
+    func = {}
+
     def __init__(self):
         self.table = {}
+        
     def Setter(self,simbol,value):
         self.table[simbol] = value
     def Getter(self,simbol):
         if simbol not in self.table.keys():
             raise "Variável não inicializada"
         return self.table[simbol]
+    @staticmethod
+    def FuncSet(simbol,value):
+        if simbol in SymbolTable.func.keys():
+            raise "Função já declarada"
+        SymbolTable.func[simbol] = value
+    @staticmethod
+    def FuncGet(simbol):
+        if simbol not in SymbolTable.func.keys():
+            raise "Função não declarada"
+        return SymbolTable.func[simbol]
 
 
 
@@ -404,6 +457,24 @@ class Parser():
                 node = BoolVal(Parser.tokens.actual.value)
                 Parser.tokens.selectNext()
                 return node
+        elif Parser.tokens.actual.tipo == "pos_func":
+            func_name = Parser.tokens.actual.value
+            parameters = []
+            Parser.tokens.selectNext()
+            if Parser.tokens.actual.tipo == "abre(":    
+                Parser.tokens.selectNext()
+                while Parser.tokens.actual.tipo != "fecha)":
+                    if Parser.tokens.actual.tipo == "separador":
+                        Parser.tokens.selectNext()
+                    parameters.append(Parser.parseRelexpression())
+                Parser.tokens.selectNext()
+                return FuncCall(func_name,parameters)
+            else:
+                Parser.tokens.selectNext()
+                if Parser.tokens.actual.tipo == "igual":
+                    raise "Variável mal formatada"
+                else:
+                    raise "Chamada de função mal formatada"
         else:
             raise "Erro de formatação"
 
@@ -472,6 +543,28 @@ class Parser():
                 return node
             else:
                 raise "Falta ; no fim da linha"
+        elif Parser.tokens.actual.tipo == "pos_func":
+            func_name = Parser.tokens.actual.value
+            parameters = []
+            Parser.tokens.selectNext()
+            if Parser.tokens.actual.tipo == "abre(":    
+                Parser.tokens.selectNext()
+                while Parser.tokens.actual.tipo != "fecha)":
+                    if Parser.tokens.actual.tipo == "separador":
+                        Parser.tokens.selectNext()
+                    parameters.append(Parser.parseRelexpression())
+                Parser.tokens.selectNext()
+                node = FuncCall(func_name,parameters)
+            else:
+                if Parser.tokens.actual.tipo == "igual":
+                    raise "Variável mal formatada"
+                else:
+                    raise "Chamada de função mal formatada"
+            if Parser.tokens.actual.tipo == "fim":
+                Parser.tokens.selectNext()
+                return node
+            else:
+                raise "Falta ; no fim da linha"
         elif Parser.tokens.actual.tipo == "reserved":
             if Parser.tokens.actual.value == "echo":
                 Parser.tokens.selectNext()
@@ -494,8 +587,6 @@ class Parser():
                         raise "Parênteses não fechado"
                 else:
                     raise "Parênteses não aberto"
-
-
             elif Parser.tokens.actual.value == "while":
                 Parser.tokens.selectNext()
                 if Parser.tokens.actual.tipo == "abre(":
@@ -508,7 +599,30 @@ class Parser():
                         raise "Parênteses não fechado"
                 else:
                     raise "Parênteses não aberto"
-                
+
+            elif Parser.tokens.actual.value == "function":
+                Parser.tokens.selectNext()
+                if Parser.tokens.actual.tipo == "func_name":
+                    func_name = Parser.tokens.actual.value
+                    parameters = []
+                    Parser.tokens.selectNext()
+                    if Parser.tokens.actual.tipo == "abre(":
+                        Parser.tokens.selectNext()
+                        while Parser.tokens.actual.tipo != "fecha)":
+                            if Parser.tokens.actual.tipo == "separador":
+                                Parser.tokens.selectNext()
+                            parameters.append(Parser.parseRelexpression())
+                        Parser.tokens.selectNext()
+                        parameters.append(Parser.parseBlock())
+                        return FuncDec(func_name,parameters)
+                    else:
+                        raise "Função mal formatada"
+            
+            elif Parser.tokens.actual.value == "return":
+                Parser.tokens.selectNext()
+                node = Return(Parser.parseRelexpression())
+
+
             if Parser.tokens.actual.tipo == "fim":
                 Parser.tokens.selectNext()
                 return node
@@ -548,9 +662,6 @@ class Parser():
         else:
             raise "Programa não aberto"
 
-
-
-            
 
     @staticmethod
     def run(code):

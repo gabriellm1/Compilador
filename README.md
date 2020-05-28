@@ -16,11 +16,13 @@
 
 ### EBNF:
 
-`PROGRAM = "<?php" , COMMAND , "?>" ;`
+`PROGRAM = "<?php" , {COMMAND} , "?>" ;`
 
 `BLOCK = "{", { COMMAND }, "}" ;`
 
-`COMMAND = ( λ | ASSIGNMENT | PRINT ), ";" | BLOCK | WHILE | IF;`
+`COMMAND = ( λ | ASSIGNMENT | PRINT | RETURN ), ";" | BLOCK | WHILE | IF | FUNCTION;`
+
+`FUNCTION = "function" , name , "(" , {RELEXPR {"," , RELEXPR} } , ")" , BLOCK ;` 
 
 `WHILE = "while" , "(" , RELEXPR , ")" , COMMAND ;`
 
@@ -30,19 +32,23 @@
 
 `PRINT = "echo", RELEXPR ;`
 
+`RETURN = "return", RELEXPR ;`
+
 `RELEXPR = EXPRESSION, {("==" | ">" | "<"), EXPRESSION}; `
 
 `EXPRESSION = TERM, {("+" | "-" | "or" | "."), TERM}; `
 
 `TERM = FACTOR, {("*" | "/" | "and"), FACTOR} ;`
 
-`FACTOR = NUMBER | STRING | ("+" | "-" | "!"), FACTOR | "(",RELEXPR,")" | readline , "(" , ")" | IDENTIFIER ;`
+`FACTOR = NUMBER | STRING | BOOL | ("+" | "-" | "!"), FACTOR | "(",RELEXPR,")" | readline , "(" , ")" | IDENTIFIER | name , "(" , {RELEXPR {"," , RELEXPR} } , ")" ;`
 
 `IDENTIFIER = "$", LETTER, { LETTER | DIGIT | "_" };`
 
 `STRING = """ (LETTER | NUMBER | SYMBOL), {LETTER | NUMBER | SYMBOL} """;`
 
 `LETTER = ( a | ... | z | A | ... | Z ) ;`
+
+`BOOL = True | False`
 
 `NUMBER = DIGIT, {DIGIT} ; `
 
