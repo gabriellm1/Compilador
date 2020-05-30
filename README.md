@@ -20,9 +20,9 @@
 
 `BLOCK = "{", { COMMAND }, "}" ;`
 
-`COMMAND = ( λ | ASSIGNMENT | PRINT | RETURN ), ";" | BLOCK | WHILE | IF | FUNCTION;`
+`COMMAND = ( λ | ASSIGNMENT | PRINT | RETURN | name , "(" , {RELEXPR {"," , RELEXPR} } , ")"), ";" | BLOCK | WHILE | IF | FUNCTION;`
 
-`FUNCTION = "function" , name , "(" , {RELEXPR {"," , RELEXPR} } , ")" , BLOCK ;` 
+`FUNCTION = "function" , name , "(" , {IDENTIFIER {"," , IDENTIFIER} } , ")" , BLOCK ;` 
 
 `WHILE = "while" , "(" , RELEXPR , ")" , COMMAND ;`
 
