@@ -205,7 +205,7 @@ class Command(Node):
     def Evaluate(self,table):
         for node in self.children:
             node.Evaluate(table)
-            if isinstance(node,Return):
+            if "return" in table.table.keys():
                 break
 
 class Assingnment(Node):
